@@ -1,0 +1,119 @@
+---
+title: "Liam England research spring"
+output: html_document
+date: "2024-11-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tidyverse)
+```
+
+
+I am studying natural disasters. Specifically, I want to answer the question:
+What is the relationship between displacement time and type of natural disaster for each state?
+Identify the rate of natural distasters for each state generally as well
+
+## Setting up
+
+```{r, message=FALSE}
+files<-list.files("data",recursive = TRUE,full.names = TRUE,pattern="puf")
+
+pulse<-map_df(files,read_csv)
+```
+
+## Selecting the variables needed
+
+```{r, message=FALSE}
+# "                    '01'='Alabama'
+#                     '02'='Alaska'
+#                     '04'='Arizona'
+#                     '05'='Arkansas'
+#                     '06'='California'
+#                     '08'='Colorado'
+#                     '09'='Connecticut'
+#                     '10'='Delaware'
+#                     '11'='District of Columbia'
+#                     '12'='Florida'
+#                     '13'='Georgia'
+#                     '15'='Hawaii'
+#                     '16'='Idaho'
+#                     '17'='Illinois'
+#                     '18'='Indiana'
+#                     '19'='Iowa'
+#                     '20'='Kansas'
+#                     '21'='Kentucky'
+#                     '22'='Louisiana'
+#                     '23'='Maine'
+#                     '24'='Maryland'
+#                     '25'='Massachusetts'
+#                     '26'='Michigan'
+#                     '27'='Minnesota'
+#                     '28'='Mississippi'
+#                     '29'='Missouri'
+#                     '30'='Montana'
+#                     '31'='Nebraska'
+#                     '32'='Nevada'
+#                     '33'='New Hampshire'
+#                     '34'='New Jersey'
+#                     '35'='New Mexico'
+#                     '36'='New York'
+#                     '37'='North Carolina'
+#                     '38'='North Dakota'
+#                     '39'='Ohio'
+#                     '40'='Oklahoma'
+#                     '41'='Oregon'
+#                     '42'='Pennsylvania'
+#                     '44'='Rhode Island'
+#                     '45'='South Carolina'
+#                     '46'='South Dakota'
+#                     '47'='Tennessee'
+#                     '48'='Texas'
+#                     '49'='Utah'
+#                     '50'='Vermont'
+#                     '51'='Virginia'
+#                     '53'='Washington'
+#                     '54'='West Virginia'
+#                     '55'='Wisconsin'
+#                     '56'='Wyoming'"
+
+disaster_data <- pulse %>%
+  select(EST_ST, ND_DISPLACE:ND_HOWLONG)
+```
+
+## Generate basic statistics
+
+```{r, message=FALSE}
+disaster_data_bystate <- disaster_data %>%
+  filter(ND_DISPLACE > 0) %>% # Only want respondents who answered the question
+  group_by(EST_ST) %>%
+  summarize(
+    response_count = n(),
+    displaced_by_disaster = sum(ND_DISPLACE == 1, na.rm=TRUE),
+    percentage_displaced = displaced_by_disaster/response_count
+  )
+
+kable(head(disaster_data_bystate %>% arrange(desc(percentage_displaced))))
+```
+
+In 2023, the states that had the highest rate of displacement due to natural disaster were Louisiana (8%), Florida (5%), and Mississippi (1.8%).
+
+Map of these results: 
+
+```{r, message=FALSE}
+library(tigris)
+library(tmap)
+library(sf)
+
+us_geo <- tigris::states(class = "sf") 
+
+disaster_data_bystate_map <- us_geo %>%
+  left_join(disaster_data_bystate, by = c("STATEFP" = "EST_ST"))
+
+tm_shape(disaster_data_bystate_map) +
+  tm_polygons("percentage_displaced", style="jenks")
+```
+
+
+I ran out of time, but next I would have calculated and created maps of the most common type of natural disaster in each state.
